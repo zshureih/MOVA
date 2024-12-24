@@ -2,42 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import base64
 import os
-
-def get_spotify_access_token():
-    # Spotify API credentials
-    CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
-    CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
-
-    # Encode credentials
-    auth_header = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
-
-    # Request access token
-    url = "https://accounts.spotify.com/api/token"
-    headers = {"Authorization": f"Basic {auth_header}"}
-    data = {"grant_type": "client_credentials"}
-
-    response = requests.post(url, headers=headers, data=data)
-    token = response.json().get("access_token")
-    print(f"Access Token: {token}")
-    return token
-
-def get_track_id(token, artist, title):
-    # Spotify API endpoint for track search
-    url = "https://api.spotify.com/v1/search"
-    params = {"q": f"track:{title} artist:{artist}", "type": "track"}
-
-    # API request headers
-    headers = {"Authorization": f"Bearer {token}"}
-
-    # Fetch track search results
-    response = requests.get(url, headers=headers, params=params)
-
-    if response.status_code == 200:
-        data = response.json()
-        track_id = data.get("tracks", {}).get("items", [])[0].get("id")
-        return track_id
-    else:
-        print(f"Error: {response.status_code} - {response.text}")
+import re
 
 def get_track_preview_url(track_name, artist):
     url = "https://api.deezer.com/search"
@@ -81,7 +46,7 @@ def download_track_preview(preview_url):
     # Download the track preview
     response = requests.get(preview_url)
 
-    download_path = "track_preview.mp3"
+    download_path = "./assets/track_preview.mp3"
 
     if response.status_code == 200:
         with open(download_path, "wb") as f:
@@ -100,12 +65,12 @@ def get_audio(artist, title):
         title (str): The title of the song.
         
     Returns:
-        str: The URL of the audio preview.
+        str: The path of the downloaded audio preview.
     """
     # token = get_spotify_access_token()
     preview_url = get_track_preview_url(title, artist)
-    download_track_preview(preview_url)
-    return preview_url
+    download_path = download_track_preview(preview_url)
+    return download_path
 
 def search_song_lyrics(song_title, artist_name, access_token):
     """
@@ -169,10 +134,14 @@ def get_lyrics(artist, title):
     access_token = os.environ.get("GENIUS_ACCESS_TOKEN")
     song_url = search_song_lyrics(title, artist, access_token)
     lyrics = scrape_lyrics(song_url)
-    return lyrics
+    pattern = r"(?=\[.*?\])"
+
+    # Splitting the string
+    sections = re.split(pattern, lyrics)
+    return sections[1:]
 
 if __name__ == "__main__":
-    artist = "Lake Street Dive"
-    title = "Bad Self Portraits"
+    artist = "Adele"
+    title = "Rolling in the Deep"
     lyrics = get_lyrics(artist, title)
-    audio_url = get_audio(artist, title)
+    audio_path = get_audio(artist, title)

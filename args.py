@@ -6,14 +6,12 @@ def parse_args():
     parser.add_argument(
         "--song",
         type=str,
-        nargs="?",
         default="Someone Like You",
         help="the title of the song to generate lyrics for",
     )
     parser.add_argument(
         "--artist",
         type=str,
-        nargs="?",
         default="Adele",
         help="the artist of the selected song",
     )
@@ -21,15 +19,8 @@ def parse_args():
         "--prompt",
         type=str,
         nargs="?",
-        default="a professional photograph of an astronaut riding a triceratops",
+        default="wide angle, artistic shots from a studio recording of a song",
         help="the prompt to add to the lyrics",
-    )
-    parser.add_argument(
-        "--init-image",
-        type=str,
-        default=None,
-        nargs="?",
-        help="path to the input modality",
     )
     parser.add_argument(
         "--init-audio",
@@ -43,10 +34,16 @@ def parse_args():
         type=str,
         nargs="?",
         help="dir to write results to",
-        default="/workspace/outputs/txt2img-samples",
+        default="./outputs",
     )
     parser.add_argument(
-        "--steps",
+        "--isteps",
+        type=int,
+        default=300,
+        help="number of interpolation steps",
+    )
+    parser.add_argument(
+        "--sample-steps",
         type=int,
         default=50,
         help="number of ddim sampling steps",
@@ -121,38 +118,21 @@ def parse_args():
         help="downsampling factor, most often 8 or 16",
     )
     parser.add_argument(
-        "--n_samples",
-        type=int,
-        default=3,
-        help="how many samples to produce for each given prompt. A.k.a batch size",
-    )
-    parser.add_argument(
-        "--n_rows",
-        type=int,
-        default=0,
-        help="rows in the grid (default: n_samples)",
-    )
-    parser.add_argument(
         "--scale",
         type=float,
         default=9.0,
         help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))",
     )
     parser.add_argument(
-        "--from-file",
-        type=str,
-        help="if specified, load prompts from this file, separated by newlines",
-    )
-    parser.add_argument(
         "--config",
         type=str,
-        default="configs/stable-diffusion/v2-1-stable-unclip-h-inference.yaml",
+        default="configs/stable-diffusion/v2-1-stable-unclip-h-bind-inference.yaml",
         help="path to config which constructs model",
     )
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="/workspace/ControlNet/models/sd21-unclip-h.ckpt",
+        default="./checkpoints/sd21-unclip-h.ckpt",
         help="path to checkpoint of model",
     )
     parser.add_argument(
@@ -179,7 +159,7 @@ def parse_args():
         type=str,
         help="Device on which Stable Diffusion will be run",
         choices=["cpu", "cuda"],
-        default="cpu",
+        default="cuda",
     )
     parser.add_argument(
         "--torchscript",
@@ -195,6 +175,13 @@ def parse_args():
         "--bf16",
         action="store_true",
         help="Use bfloat16",
+    )
+    parser.add_argument(
+        "--interpolation",
+        type=str,
+        help="interpolation mode",
+        choices=["linear", "cosine", "cubic"],
+        default="cosine",
     )
     opt = parser.parse_args()
     return opt

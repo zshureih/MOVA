@@ -32,4 +32,5 @@ dependencies = [
     "kornia==0.6",
     "streamlit-drawable-canvas==0.8.0",
     "bs4>=0.0.2",
+    "numpy==1.26.0",
 ]
