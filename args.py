@@ -19,7 +19,7 @@ def parse_args():
         "--prompt",
         type=str,
         nargs="?",
-        default="wide angle, artistic shots from a music video",
+        default="in focus, high res, artistic shots from a music video",
         help="the prompt to add to the lyrics",
     )
     parser.add_argument(
