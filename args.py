@@ -6,20 +6,20 @@ def parse_args():
     parser.add_argument(
         "--song",
         type=str,
-        default="Someone Like You",
+        default="GOMD",
         help="the title of the song to generate lyrics for",
     )
     parser.add_argument(
         "--artist",
         type=str,
-        default="Adele",
+        default="J. Cole",
         help="the artist of the selected song",
     )
     parser.add_argument(
         "--prompt",
         type=str,
         nargs="?",
-        default="wide angle, artistic shots from a studio recording of a song",
+        default="wide angle, artistic shots from a music video",
         help="the prompt to add to the lyrics",
     )
     parser.add_argument(
@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "--isteps",
         type=int,
-        default=300,
+        default=900,
         help="number of interpolation steps",
     )
     parser.add_argument(
@@ -138,7 +138,7 @@ def parse_args():
     parser.add_argument(
         "--seed",
         type=int,
-        default=42,
+        default=316199,
         help="the seed (for reproducible sampling)",
     )
     parser.add_argument(

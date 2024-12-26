@@ -9,7 +9,6 @@ from itertools import islice
 from einops import rearrange, repeat
 from pytorch_lightning import seed_everything
 from torch import autocast
-from pathlib import Path
 from contextlib import nullcontext
 
 from args import parse_args
@@ -20,6 +19,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.models.diffusion.dpm_solver import DPMSolverSampler
 import PIL
+import moviepy.editor as mpe
 from image_bind.models.imagebind_model import ModalityType
 import image_bind.data as ibd
 
@@ -144,7 +144,8 @@ def main(opt):
         else:
             audio_path = opt.init_audio
     else:
-        print("No artist or title provided. Generating samples for the default prompt.")
+        print("No artist or title provided, try again.")
+        return 0
 
     # setup the prompts
     text_prompts = []
@@ -155,11 +156,12 @@ def main(opt):
             prompt += f", best quality, extremely detailed"
             text_prompts.append(prompt)
     else:
-        # use the default prompt
-        text_prompts.append(opt.prompt)
-
+        # we couldn't find any lyrics, so we'll return false
+        print("No lyrics found.")
+        return 0
+    
     # setup output directory
-    sample_path = os.path.join(outpath, "samples")
+    sample_path = os.path.join(outpath, f"{artist}_{title}_{opt.interpolation}_samples")
     os.makedirs(sample_path, exist_ok=True)
     sample_count = 0
     base_count = len(os.listdir(sample_path))
@@ -174,14 +176,14 @@ def main(opt):
 
     # start generating samples
     with torch.no_grad(), precision_scope(opt.device), model.ema_scope():
-        all_samples = list()
+        frames = list()
 
         # encode the audio sample
         init_audio = ibd.load_and_transform_audio_data([audio_path], device)
         inputs = {
             ModalityType.AUDIO: init_audio,
         }
-        outs = model.embedder(inputs, normalize=False)[ModalityType.AUDIO]
+        outs = model.embedder(inputs, normalize=True)[ModalityType.AUDIO]
         c_adm = repeat(outs, '1 ... -> b ...', b=batch_size) * opt.strength
 
         # add noise to the conditioning
@@ -200,8 +202,7 @@ def main(opt):
             c_adm = torch.cat((c_adm, noise_level_emb), 1)
 
         # add unconditional conditioning
-        if opt.scale != 1.0:
-            uc = model.get_learned_conditioning([negative_prompt])
+        uc = model.get_learned_conditioning([negative_prompt])
         uc = {"c_crossattn": [uc], "c_adm": c_adm}
 
         # iterate over the text prompts
@@ -246,11 +247,34 @@ def main(opt):
                 base_count += 1
                 sample_count += 1
 
-                all_samples.append(x_sample)
+                frames.append(img)
+
+    # save frames as a video @ 30fps
+    video_path = os.path.join(
+        outpath, f"{artist}_{title}_{opt.interpolation}_video.mp4"
+    )
+    frame_height, frame_width = frames[0].size
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(video_path, fourcc, 30, (frame_width, frame_height))
+
+    for frame in frames:
+        video_writer.write(cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR))
+
+    video_writer.release()
+
+    # Combine video with audio
+    video_clip = mpe.VideoFileClip(video_path)
+    audio_clip = mpe.AudioFileClip(audio_path)
+    final_clip = video_clip.set_audio(audio_clip)
+    final_clip.write_videofile(
+        os.path.join(outpath, f"{artist}_{title}_{opt.interpolation}_final_video.mp4"),
+        codec="libx264",
+    )
 
     print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
           f" \nEnjoy.")
 
+    return 1
 
 if __name__ == "__main__":
     opt = parse_args()
