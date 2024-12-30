@@ -170,6 +170,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-checkpoints/*
+checkpoints/*.pth
+checkpoints/*.ckpt
+checkpoints/*.tar
+checkpoints/*.zip
 assets/*.mp3
 outputs/
