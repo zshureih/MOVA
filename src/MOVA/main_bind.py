@@ -5,7 +5,7 @@ import numpy as np
 from omegaconf import OmegaConf
 from PIL import Image
 from tqdm import tqdm
-from itertools import islice
+from pathlib import Path
 from einops import rearrange, repeat
 from pytorch_lightning import seed_everything
 from torch import autocast
@@ -38,11 +38,6 @@ def load_img(path):
     return 2. * image - 1.
 
 
-def chunk(it, size):
-    it = iter(it)
-    return iter(lambda: tuple(islice(it, size)), ())
-
-
 def load_model_from_config(config, ckpt, device=torch.device("cuda"), verbose=False):
     print(f"Loading model from {ckpt}")
     pl_sd = torch.load(ckpt, map_location="cpu")
@@ -70,14 +65,6 @@ def load_model_from_config(config, ckpt, device=torch.device("cuda"), verbose=Fa
     model.eval()
     return model
 
-
-def put_watermark(img, wm_encoder=None):
-    if wm_encoder is not None:
-        img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        img = wm_encoder.encode(img, 'dwtDct')
-        img = Image.fromarray(img[:, :, ::-1])
-    return img
-
 def interpolate(init, end, t, interpolation):
     """Interpolates between two prompts using the specified method.
     
@@ -103,8 +90,11 @@ def interpolate(init, end, t, interpolation):
 
     return interpolated
 
-def main(opt):
+def main_bind(opt):
     seed_everything(opt.seed)
+
+    opt.config = str(Path(opt.config).resolve()).replace("src/MOVA/", "")
+    opt.ckpt = str(Path(opt.ckpt).resolve()).replace("src/MOVA/", "")
 
     config = OmegaConf.load(f"{opt.config}")
     device = torch.device("cuda") if opt.device == "cuda" else torch.device("cpu")
@@ -159,7 +149,7 @@ def main(opt):
         # we couldn't find any lyrics, so we'll return false
         print("No lyrics found.")
         return 0
-    
+
     # setup output directory
     sample_path = os.path.join(outpath, f"{artist}_{title}_{opt.interpolation}_samples")
     os.makedirs(sample_path, exist_ok=True)
@@ -174,6 +164,9 @@ def main(opt):
     start_codes = [(start_codes[i], start_codes[i + 1]) for i in range(0, len(start_codes) - 1)]
     text_prompts = [(text_prompts[i], text_prompts[i + 1]) for i in range(0, len(text_prompts) - 1)]
 
+    duration = 30 # seconds
+    interpolation_steps = (opt.fps * duration) // len(text_prompts)
+
     # start generating samples
     with torch.no_grad(), precision_scope(opt.device), model.ema_scope():
         frames = list()
@@ -183,7 +176,7 @@ def main(opt):
         inputs = {
             ModalityType.AUDIO: init_audio,
         }
-        outs = model.embedder(inputs, normalize=True)[ModalityType.AUDIO]
+        outs = model.embedder(inputs, normalize=False)[ModalityType.AUDIO]
         c_adm = repeat(outs, '1 ... -> b ...', b=batch_size) * opt.strength
 
         # add noise to the conditioning
@@ -206,7 +199,7 @@ def main(opt):
         uc = {"c_crossattn": [uc], "c_adm": c_adm}
 
         # iterate over the text prompts
-        for i, prompts in tqdm(enumerate(text_prompts)):
+        for i, prompts in enumerate(tqdm(text_prompts)):
             # encode the initial and next prompts
             initial_prompt = model.get_learned_conditioning(prompts[0])
             next_prompt = model.get_learned_conditioning(prompts[1])
@@ -214,7 +207,7 @@ def main(opt):
             initial_code = start_codes[i][0]
             next_code = start_codes[i][1]
 
-            for t in torch.linspace(0, 1, opt.isteps):
+            for t in torch.linspace(0, 1, interpolation_steps):
                 # interpolate between the prompts
                 interpolated = interpolate(initial_prompt, next_prompt, t, opt.interpolation)
                 interpolated_code = interpolate(
@@ -255,7 +248,7 @@ def main(opt):
     )
     frame_height, frame_width = frames[0].size
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter(video_path, fourcc, 30, (frame_width, frame_height))
+    video_writer = cv2.VideoWriter(video_path, fourcc, opt.fps, (frame_width, frame_height))
 
     for frame in frames:
         video_writer.write(cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR))
@@ -279,4 +272,4 @@ def main(opt):
 if __name__ == "__main__":
     opt = parse_args()
     # print(opt)
-    main(opt)
+    main_bind(opt)

@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import base64
+from pathlib import Path
 import os
 import re
 
@@ -45,8 +46,8 @@ def download_track_preview(preview_url):
 
     # Download the track preview
     response = requests.get(preview_url)
-
-    download_path = "./assets/track_preview.mp3"
+    download_path = Path("assets/track_preview.mp3").resolve()
+    download_path = str(download_path).replace("/src/MOVA", "")
 
     if response.status_code == 200:
         with open(download_path, "wb") as f:

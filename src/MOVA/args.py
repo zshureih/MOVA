@@ -6,13 +6,13 @@ def parse_args():
     parser.add_argument(
         "--song",
         type=str,
-        default="GOMD",
+        default="Misery Business",
         help="the title of the song to generate lyrics for",
     )
     parser.add_argument(
         "--artist",
         type=str,
-        default="J. Cole",
+        default="Paramore",
         help="the artist of the selected song",
     )
     parser.add_argument(
@@ -37,10 +37,10 @@ def parse_args():
         default="./outputs",
     )
     parser.add_argument(
-        "--isteps",
+        "--fps",
         type=int,
-        default=900,
-        help="number of interpolation steps",
+        default=15,
+        help="number of frames per second in the output video",
     )
     parser.add_argument(
         "--sample-steps",
@@ -77,21 +77,10 @@ def parse_args():
         help="use DPM (2) sampler",
     )
     parser.add_argument(
-        "--fixed_code",
-        action="store_true",
-        help="if enabled, uses the same starting code across all samples ",
-    )
-    parser.add_argument(
         "--ddim_eta",
         type=float,
         default=0.0,
         help="ddim eta (eta=0.0 corresponds to deterministic sampling",
-    )
-    parser.add_argument(
-        "--n_iter",
-        type=int,
-        default=3,
-        help="sample this often",
     )
     parser.add_argument(
         "--H",
@@ -132,7 +121,7 @@ def parse_args():
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="./checkpoints/sd21-unclip-h.ckpt",
+        default="checkpoints/sd21-unclip-h.ckpt",
         help="path to checkpoint of model",
     )
     parser.add_argument(
