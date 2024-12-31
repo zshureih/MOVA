@@ -40,7 +40,7 @@ def load_img(path):
 
 def load_model_from_config(config, ckpt, device=torch.device("cuda"), verbose=False):
     print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location="cpu")
+    pl_sd = torch.load(ckpt, map_location=device)
     if "global_step" in pl_sd:
         print(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
@@ -93,12 +93,20 @@ def interpolate(init, end, t, interpolation):
 def main_bind(opt):
     seed_everything(opt.seed)
 
-    opt.config = str(Path(opt.config).resolve()).replace("src/MOVA/", "")
-    opt.ckpt = str(Path(opt.ckpt).resolve()).replace("src/MOVA/", "")
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    print(f"Root directory: {root_dir}")
 
-    config = OmegaConf.load(f"{opt.config}")
+    pathsep = "/" if os.name != "nt" else "\\"
+    
+    config_path = opt.config.split(pathsep)
+    config_path = root_dir.joinpath(*config_path)
+    
+    ckpt_path = opt.ckpt.split(pathsep)
+    ckpt_path = root_dir.joinpath(*ckpt_path)
+
+    config = OmegaConf.load(f"{config_path}")
     device = torch.device("cuda") if opt.device == "cuda" else torch.device("cpu")
-    model = load_model_from_config(config, f"{opt.ckpt}", device)
+    model = load_model_from_config(config, f"{ckpt_path}", device)
 
     print("Loaded Model, setting up Sampler")
 
@@ -110,8 +118,8 @@ def main_bind(opt):
         sampler = DDIMSampler(model, device=device)
     print("Sampler setup complete")
 
-    os.makedirs(opt.outdir, exist_ok=True)
-    outpath = opt.outdir
+    outpath = root_dir / opt.outdir
+    os.makedirs(outpath, exist_ok=True)
 
     # print("Creating invisible watermark encoder (see https://github.com/ShieldMnt/invisible-watermark)...")
     # wm = "SDV2"

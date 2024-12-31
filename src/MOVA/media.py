@@ -34,7 +34,7 @@ def get_track_preview_url(track_name, artist):
 
     return preview_url
 
-def download_track_preview(preview_url):
+def download_track_preview(download_path, preview_url):
     """Download the track preview from the given URL.
     
     Args:
@@ -46,8 +46,6 @@ def download_track_preview(preview_url):
 
     # Download the track preview
     response = requests.get(preview_url)
-    download_path = Path("assets/track_preview.mp3").resolve()
-    download_path = str(download_path).replace("/src/MOVA", "")
 
     if response.status_code == 200:
         with open(download_path, "wb") as f:
@@ -68,9 +66,12 @@ def get_audio(artist, title):
     Returns:
         str: The path of the downloaded audio preview.
     """
-    # token = get_spotify_access_token()
-    preview_url = get_track_preview_url(title, artist)
-    download_path = download_track_preview(preview_url)
+    root_path = Path(__file__).parent.parent.parent
+    download_path = root_path / "assets" / f"{title}_{artist}_track_preview.mp3"
+    if not download_path.exists():
+        preview_url = get_track_preview_url(title, artist)
+        download_path = download_track_preview(download_path, preview_url)
+
     return download_path
 
 def search_song_lyrics(song_title, artist_name, access_token):
