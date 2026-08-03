@@ -1,0 +1,39 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ALLOWED_ORIGINS: https://zshureih.github.io
+      MAX_QUEUE_DEPTH: "20"
+      SUBMIT_RATE_LIMIT: 5/hour
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    command: ["python", "worker.py"]
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      STUB_DELAY_SECONDS: "15"
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:
