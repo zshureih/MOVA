@@ -1,6 +1,11 @@
 services:
   redis:
     image: redis:7-alpine
+    labels:
+      com.jakenet.project: mova
+      com.jakenet.component: cache
+      com.jakenet.managed-by: compose
+      com.jakenet.group: MOVA
     restart: unless-stopped
     volumes:
       - redis-data:/data
@@ -10,6 +15,11 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
+    labels:
+      com.jakenet.project: mova
+      com.jakenet.component: api
+      com.jakenet.managed-by: compose
+      com.jakenet.group: MOVA
     restart: unless-stopped
     environment:
       REDIS_HOST: redis
@@ -26,6 +36,11 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
+    labels:
+      com.jakenet.project: mova
+      com.jakenet.component: worker
+      com.jakenet.managed-by: compose
+      com.jakenet.group: MOVA
     restart: unless-stopped
     command: ["python", "worker.py"]
     environment:
